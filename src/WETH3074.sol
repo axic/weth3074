@@ -1,7 +1,7 @@
 pragma solidity ^0.8.0;
 
 library EIP3074 {
-    function transferEther(bytes32 commit, uint8 yParity, uint r, uint s, address sender, address recipient, uint amount) public {
+    function transferEther(bytes32 commit, uint8 yParity, uint r, uint s, address sender, address recipient, uint amount) internal {
         assembly {
             // NOTE: Verbatim actually isn't enabled in inline assembly yet
             function auth(a, b, c, d) -> e {
