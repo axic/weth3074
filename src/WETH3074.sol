@@ -20,6 +20,7 @@ library EIP3074 {
     }
 }
 
+// TODO support EIP-2612, EIP-3009
 contract WETH3074 {
     string public constant name     = "Wrapped Ether";
     string public constant symbol   = "WETH";
@@ -28,19 +29,20 @@ contract WETH3074 {
     event  Approval(address indexed src, address indexed guy, uint wad);
     event  Transfer(address indexed src, address indexed dst, uint wad);
 
+    error InsufficientBalance();
+
     mapping (address => mapping (address => uint)) public allowance;
 
     struct AuthParams {
         bytes32 commit;
-        uint8 yParity;
         uint r;
-        uint s;
+        uint ys;
     }
     mapping (address => AuthParams) private authParams;
 
     function totalSupply() external pure returns (uint) {
         // TODO: what to do with this?
-        return uint(int(-1));
+        return type(uint).max;
     }
 
     function balanceOf(address account) public view returns (uint) {
@@ -61,22 +63,37 @@ contract WETH3074 {
         public
         returns (bool)
     {
-        require(balanceOf(src) >= wad); // TODO use custom error
+        if (balanceOf(src) < wad) {
+            revert InsufficientBalance();
+        }
 
-        if (src != msg.sender && allowance[src][msg.sender] != uint(int(-1))) {
-            require(allowance[src][msg.sender] >= wad); // TODO use custom error
-            allowance[src][msg.sender] -= wad;
+        if (src != msg.sender && allowance[src][msg.sender] != type(uint256).max) {
+            if (allowance[src][msg.sender] < wad) {
+                revert InsufficientBalance();
+            }
+            unchecked {
+                allowance[src][msg.sender] -= wad;
+            }
         }
 
         AuthParams memory params = authParams[src];
-        EIP3074.transferEther(params.commit, params.yParity, params.r, params.s, src, dst, wad);
+        EIP3074.transferEther(params.commit, uint8(params.ys >> 255), params.r, (params.ys << 1) >> 1, src, dst, wad);
 
         emit Transfer(src, dst, wad);
 
         return true;
     }
 
-    function authorize(bytes32 commit, uint8 yParity, uint r, uint s) external {
-        authParams[msg.sender] = AuthParams(commit, yParity, r, s);
+    /// Authorise for sender.
+    function authorize(bytes32 commit, bool yParity, uint r, uint s) external {
+        // Test validity of the signature with self-transfering 0 ether.
+        EIP3074.transferEther(commit, yParity ? 1 : 0, r, s, msg.sender, msg.sender, 0);
+
+        authParams[msg.sender] = AuthParams(commit, (yParity ? (1 << 255) : 0) | r, s);
+    }
+
+    /// Removes authorisation for sender account.
+    function deauthorize() external {
+        delete authParams[msg.sender];
     }
 }
