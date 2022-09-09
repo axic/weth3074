@@ -65,8 +65,8 @@ contract WETH3074 {
     string public constant symbol = "WETH";
     uint8 public constant decimals = 18;
 
-    event Approval(address indexed src, address indexed guy, uint256 wad);
-    event Transfer(address indexed src, address indexed dst, uint256 wad);
+    event Approval(address indexed src, address indexed dst, uint256 amount);
+    event Transfer(address indexed src, address indexed dst, uint256 amount);
 
     error InsufficientBalance();
 
@@ -89,34 +89,34 @@ contract WETH3074 {
         return account.balance;
     }
 
-    function approve(address guy, uint256 wad) external returns (bool) {
-        allowance[msg.sender][guy] = wad;
-        emit Approval(msg.sender, guy, wad);
+    function approve(address dst, uint256 amount) external returns (bool) {
+        allowance[msg.sender][dst] = amount;
+        emit Approval(msg.sender, dst, amount);
         return true;
     }
 
-    function transfer(address dst, uint256 wad) external returns (bool) {
-        return transferFrom(msg.sender, dst, wad);
+    function transfer(address dst, uint256 amount) external returns (bool) {
+        return transferFrom(msg.sender, dst, amount);
     }
 
-    function transferFrom(address src, address dst, uint256 wad) public returns (bool) {
-        if (balanceOf(src) < wad) {
+    function transferFrom(address src, address dst, uint256 amount) public returns (bool) {
+        if (balanceOf(src) < amount) {
             revert InsufficientBalance();
         }
 
         if (src != msg.sender && allowance[src][msg.sender] != type(uint256).max) {
-            if (allowance[src][msg.sender] < wad) {
+            if (allowance[src][msg.sender] < amount) {
                 revert InsufficientBalance();
             }
             unchecked {
-                allowance[src][msg.sender] -= wad;
+                allowance[src][msg.sender] -= amount;
             }
         }
 
         AuthParams memory params = authParams[src];
-        EIP3074.transferEther(params.commit, uint8(params.ys >> 255), params.r, (params.ys << 1) >> 1, src, dst, wad);
+        EIP3074.transferEther(params.commit, uint8(params.ys >> 255), params.r, (params.ys << 1) >> 1, src, dst, amount);
 
-        emit Transfer(src, dst, wad);
+        emit Transfer(src, dst, amount);
 
         return true;
     }
