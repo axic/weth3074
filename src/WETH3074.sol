@@ -1,6 +1,24 @@
 pragma solidity ^0.8.0;
 
 library EIP3074 {
+    /// This function authorizes using the the credentials to verify them.
+    function checkAuth(bytes32 commit, uint8 yParity, uint256 r, uint256 s, address sender)
+        internal
+        returns (bool valid)
+    {
+        assembly {
+            // NOTE: Verbatim actually isn't enabled in inline assembly yet
+            function auth(a, b, c, d) -> e {
+                e := verbatim_4i_1o(hex"f6", a, b, c, d)
+            }
+
+            let authorized := auth(commit, yParity, r, s)
+            valid := eq(authorized, sender)
+        }
+    }
+
+    /// This function authorizes using the credentials and makes a value-transfer call.
+    /// Note: This will not remove authorization, and so further calls can be made.
     function transferEther(
         bytes32 commit,
         uint8 yParity,
@@ -94,8 +112,7 @@ contract WETH3074 {
 
     /// Authorise for sender.
     function authorize(bytes32 commit, bool yParity, uint256 r, uint256 s) external {
-        // Test validity of the signature with self-transfering 0 ether.
-        EIP3074.transferEther(commit, yParity ? 1 : 0, r, s, msg.sender, msg.sender, 0);
+        EIP3074.checkAuth(commit, yParity ? 1 : 0, r, s, msg.sender);
 
         authParams[msg.sender] = AuthParams(commit, (yParity ? (1 << 255) : 0) | r, s);
     }
