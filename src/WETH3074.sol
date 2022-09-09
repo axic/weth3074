@@ -8,12 +8,17 @@ library EIP3074 {
     {
         assembly {
             // NOTE: Verbatim actually isn't enabled in inline assembly yet
-            function auth(a, b, c, d) -> e {
-                e := verbatim_4i_1o(hex"f6", a, b, c, d)
+            function auth(a, b, c) -> d {
+                d := verbatim_3i_1o(hex"f6", a, b, c)
             }
 
-            let authorized := auth(commit, yParity, r, s)
-            valid := eq(authorized, sender)
+            let mem := mload(0x40)
+            mstore(mem, yParity)
+            mstore(add(mem, 32), r)
+            mstore(add(mem, 64), s)
+            mstore(add(mem, 96), commit)
+
+            valid := auth(sender, mem, add(mem, 128))
         }
     }
 
@@ -32,15 +37,21 @@ library EIP3074 {
     {
         assembly {
             // NOTE: Verbatim actually isn't enabled in inline assembly yet
-            function auth(a, b, c, d) -> e {
-                e := verbatim_4i_1o(hex"f6", a, b, c, d)
+            function auth(a, b, c) -> d {
+                d := verbatim_3i_1o(hex"f6", a, b, c)
             }
             function authcall(a, b, c, d, e, f, g, h) -> i {
                 i := verbatim_8i_1o(hex"f7", a, b, c, d, e, f, g, h)
             }
 
-            let authorized := auth(commit, yParity, r, s)
-            if iszero(eq(authorized, sender)) { revert(0, 0) }
+            let mem := mload(0x40)
+            mstore(mem, yParity)
+            mstore(add(mem, 32), r)
+            mstore(add(mem, 64), s)
+            mstore(add(mem, 96), commit)
+
+            let authorized := auth(sender, mem, add(mem, 128))
+            if iszero(authorized) { revert(0, 0) }
 
             let success := authcall(gas(), recipient, 0, amount, 0, 0, 0, 0)
             if iszero(success) { revert(0, 0) }
