@@ -70,6 +70,8 @@ contract WETH3074 {
 
     error InsufficientBalance();
 
+    error AuthorizationFailed();
+
     mapping(address => mapping(address => uint256)) public allowance;
 
     struct AuthParams {
@@ -123,7 +125,9 @@ contract WETH3074 {
 
     /// Authorise for sender.
     function authorize(bytes32 commit, bool yParity, uint256 r, uint256 s) external {
-        EIP3074.checkAuth(commit, yParity ? 1 : 0, r, s, msg.sender);
+        if (!EIP3074.checkAuth(commit, yParity ? 1 : 0, r, s, msg.sender)) {
+            revert AuthorizationFailed();
+        }
 
         authParams[msg.sender] = AuthParams(commit, (yParity ? (1 << 255) : 0) | r, s);
     }
