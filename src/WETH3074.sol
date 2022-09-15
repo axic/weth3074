@@ -22,6 +22,18 @@ library EIP3074 {
         }
     }
 
+    /// Resets authorization context to empty.
+    function resetAuth() internal {
+        assembly {
+            // NOTE: Verbatim actually isn't enabled in inline assembly yet
+            function auth(a, b, c) -> d {
+                d := verbatim_3i_1o(hex"f6", a, b, c)
+            }
+
+            pop(auth(0, 0, 0))
+        }
+    }
+
     /// This function authorizes using the credentials and makes a value-transfer call.
     /// Note: This will not remove authorization, and so further calls can be made.
     function transferEther(
@@ -117,6 +129,7 @@ contract WETH3074 {
 
         AuthParams memory params = authParams[src];
         EIP3074.transferEther(params.commit, uint8(params.ys >> 255), params.r, (params.ys << 1) >> 1, src, dst, amount);
+        EIP3074.resetAuth();
 
         emit Transfer(src, dst, amount);
 
@@ -128,6 +141,8 @@ contract WETH3074 {
         if (!EIP3074.checkAuth(commit, yParity ? 1 : 0, r, s, msg.sender)) {
             revert AuthorizationFailed();
         }
+
+        EIP3074.resetAuth();
 
         authParams[msg.sender] = AuthParams(commit, (yParity ? (1 << 255) : 0) | r, s);
     }
